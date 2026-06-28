@@ -1,6 +1,9 @@
 import json
 import logging
+import os
 import requests
+from pydantic import BaseModel
+
 from constants.headers import Headers
 
 
@@ -13,12 +16,14 @@ class CustomRequester:
     def __init__(self, session: requests.Session = None, base_url: str = None):
         self.session = session or requests.Session()
         self.base_url = base_url or "https://auth.dev-cinescope.coconutqa.ru"
-        self.session.headers.update(self.base_headers)
+        self.session.headers = self.base_headers.copy()
         self.logger = logging.getLogger(__name__)
 
-    def send_request(self, method: str, endpoint: str, need_logging: bool = True, **kwargs):
+    def send_request(self, method: str, endpoint: str, need_logging: bool = True, **data):
         url = f"{self.base_url}{endpoint}"
-        response = self.session.request(method=method, url=url, **kwargs)
+        if isinstance(data.get("json"), BaseModel):
+            data["json"] = json.loads(data["json"].model_dump_json(exclude_unset=True))
+        response = self.session.request(method=method, url=url, **data)
 
         if need_logging:
             self.log_request_and_response(response)
@@ -37,24 +42,50 @@ class CustomRequester:
         try:
             request = response.request
 
-            self.logger.info("\n%s REQUEST %s", "=" * 40, "=" * 40)
-            self.logger.info("\n%s %s", request.method, request.url)
-            self.logger.info("Headers: %s", dict(request.headers))
+            headers = " \\\n".join(
+                f"-H '{header}: {value}'"
+                for header, value in request.headers.items()
+            )
+            full_test_name = os.environ.get("PYTEST_CURRENT_TEST", "").replace(" (call)", "")
 
+            body = ""
             if request.body:
-                body = request.body
-                if isinstance(body, bytes):
-                    body = body.decode("utf-8", errors="replace")
-                self.logger.info("Body: %s", body)
+                request_body = request.body
+                if isinstance(request_body, bytes):
+                    request_body = request_body.decode("utf-8", errors="replace")
 
-            self.logger.info("\n%s RESPONSE %s", "=" * 40, "=" * 40)
-            self.logger.info("\nStatus code: %s", response.status_code)
+                try:
+                    parsed_body = json.loads(request_body)
+                    for field in ("password", "passwordRepeat"):
+                        if field in parsed_body:
+                            parsed_body[field] = "***"
+                    request_body = json.dumps(parsed_body, ensure_ascii=False)
+                except (TypeError, json.JSONDecodeError):
+                    pass
 
-            try:
-                formatted_json = json.dumps(response.json(), indent=4, ensure_ascii=False)
-                self.logger.info("Response JSON:\n%s", formatted_json)
-            except Exception:
-                self.logger.info("Response text:\n%s", response.text)
+                if request_body != "{}":
+                    body = f"-d '{request_body}' \\\n"
+
+            self.logger.info(
+                "\npytest %s\n"
+                "curl -X %s '%s' \\\n"
+                "%s \\\n"
+                "%s",
+                full_test_name,
+                request.method,
+                request.url,
+                headers,
+                body,
+            )
+
+            if not response.ok:
+                self.logger.info(
+                    "\nRESPONSE:"
+                    "\nSTATUS_CODE: %s"
+                    "\nDATA: %s",
+                    response.status_code,
+                    response.text,
+                )
 
         except Exception as e:
             self.logger.error("Logging failed: %s", e)

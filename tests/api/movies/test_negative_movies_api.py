@@ -1,4 +1,6 @@
 from api.api_manager import ApiManager
+from entities.user import User
+import pytest
 
 
 class TestNegativeMoviesApi:
@@ -16,9 +18,11 @@ class TestNegativeMoviesApi:
         response = super_admin.api.movies_api.create_movie(movie_with_existing_name)
         assert response.status_code == 409, "Не вызывается ошибка при создании фильма с таким же именем"
 
-    def test_create_movie_with_user_rules(self, common_user, test_movie):
-        response = common_user.api.movies_api.create_movie(test_movie)
-        assert response.status_code == 403, "Обычный пользователь смог создать фильм"
+    @pytest.mark.slow
+    @pytest.mark.parametrize("roles", ["common_user", "admin"], indirect=True)
+    def test_create_movie_with_another_roles(self, roles: User, test_movie):
+        response = roles.api.movies_api.create_movie(test_movie)
+        assert response.status_code == 403, "Фильм создан не суперадмином"
 
     def test_create_movie_with_negative_price(self, super_admin, movie_with_string_price):
         response = super_admin.api.movies_api.create_movie(movie_with_string_price)
@@ -53,6 +57,12 @@ class TestNegativeMoviesApi:
     def test_delete_movie_by_non_existing_id(self, super_admin):
         response = super_admin.api.movies_api.delete_movie(9999999999)
         assert response.status_code == 404, "Не вызывается 404 при несуществующем id"
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("roles", ["common_user", "admin"], indirect=True)
+    def test_delete_movie_by_another_roles(self, roles: User, movie_id):
+        response = roles.api.movies_api.delete_movie(movie_id)
+        assert response.status_code == 403, "Фильм создан не суперадмином"
 
     # Тесты для PATCH /movies/{id}
     def test_update_movie_by_non_existing_id(self, super_admin, test_movie):
