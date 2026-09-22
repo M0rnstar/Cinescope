@@ -1,11 +1,14 @@
 from models.user_data import UserData
 import pytest
 import requests
+from sqlalchemy.orm import Session
 from api.api_manager import ApiManager
 from utils.data_generator import DataGenerator
 from entities.user import User
 from resources.user_creds import SuperAdminCreds
 from constants.roles import Roles
+from db_requester.db_client import get_db_session
+from db_requester.db_helpers import DBHelper
 
 
 @pytest.fixture
@@ -34,6 +37,27 @@ def session():
 @pytest.fixture(scope="session")
 def api_manager(session):
     return ApiManager(session)
+
+
+@pytest.fixture(scope="function")
+def db_session() -> Session:
+    db_session = get_db_session()
+    yield db_session
+    db_session.close()
+
+
+@pytest.fixture(scope="function")
+def db_helper(db_session) -> DBHelper:
+    return DBHelper(db_session)
+
+
+@pytest.fixture(scope="function")
+def created_test_user(db_helper):
+    user = db_helper.create_test_user(DataGenerator.generate_user_data())
+    yield user
+
+    if db_helper.get_user_by_id(user.id):
+        db_helper.delete_user(user)
 
 
 @pytest.fixture
@@ -71,7 +95,7 @@ def super_admin(user_session):
     )
 
     response = super_admin.api.auth_api.login_user(*super_admin.creds)
-    assert response.status_code == 201, response.text
+    assert response.status_code == 200, response.text
 
     token = response.json().get("accessToken")
     assert token is not None, "Токен доступа отсутствует в ответе"
@@ -92,7 +116,7 @@ def admin(user_session, super_admin, creation_user_data):
     )
     super_admin.api.user_api.create_user(creation_user_data)
     response = admin.api.auth_api.login_user(*admin.creds)
-    assert response.status_code == 201
+    assert response.status_code == 200
 
     token = response.json().get("accessToken")
     assert token is not None
@@ -113,7 +137,7 @@ def common_user(user_session, super_admin, creation_user_data):
     )
     super_admin.api.user_api.create_user(creation_user_data)
     response = common_user.api.auth_api.login_user(*common_user.creds)
-    assert response.status_code == 201, response.text
+    assert response.status_code == 200, response.text
 
     token = response.json().get("accessToken")
     assert token is not None, "Токен доступа отсутствует в ответе"

@@ -17,7 +17,7 @@ class TestAuthApi:
             registered_user.email,
             registered_user.password
         )
-        assert response.status_code == 201, "Пользователь не найден"
+        assert response.status_code == 200, "Пользователь не найден"
 
         login_user_response = LoginUserResponse.model_validate(response.json())
         assert login_user_response.accessToken != "", "Токен не должен быть пустым"
