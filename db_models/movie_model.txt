@@ -1,0 +1,52 @@
+# Get
+{
+  "movies": [
+    {
+      "id": 2,
+      "name": "Название фильма",
+      "price": 200,
+      "description": "Описание фильма",
+      "imageUrl": "https://image.url",
+      "location": "MSK",
+      "published": true,
+      "genreId": 1,
+      "genre": {
+        "name": "Драма"
+      },
+      "createdAt": "2024-02-28T04:28:15.965Z",
+      "rating": 5
+    }
+  ],
+  "count": 13,
+  "page": 1,
+  "pageSize": 10,
+  "pageCount": 2
+}
+
+# POST
+
+{
+  "name": "Название фильма",
+  "imageUrl": "https://image.url",
+  "price": 100,
+  "description": "Описание фильма",
+  "location": "SPB",
+  "published": true,
+  "genreId": 1
+}
+
+{
+  "id": 2,
+  "name": "Название фильма",
+  "price": 200,
+  "description": "Описание фильма",
+  "imageUrl": "https://image.url",
+  "location": "MSK",
+  "published": true,
+  "genreId": 1,
+  "genre": {
+    "name": "Драма"
+  },
+  "createdAt": "2024-02-28T04:28:15.965Z",
+  "rating": 5
+}
