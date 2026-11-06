@@ -6,3 +6,5 @@ __pycache__/
 .env
 temp.py
 test_temp.py
+AGENTS.md
+PROJECT_STATE.md
