@@ -6,5 +6,6 @@ __pycache__/
 .env
 temp.py
 test_temp.py
+allure-results
 AGENTS.md
 PROJECT_STATE.md
